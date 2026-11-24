@@ -10,6 +10,8 @@ output: zs123
 
 进入实验一安装的虚拟机。示例以首字母 `zs`、学号后三位 `123` 为例。先把本人的三位后缀写在草稿中。若后三位是 `007`，对应账号为 `zs007`，SSH 端口为 `22007`。
 
+> **本章截屏**　无论是在虚拟机控制台还是宿主机的 SSH 客户端操作，都截取整块实验显示屏，从左上角第一个像素到右下角最后一个像素。保留终端提示符、命令与实际输出。[查看终端取图样式](screenshots.html#terminal)
+
 ## 1. 备份、清理并更换软件源
 
 本节示例针对 Ubuntu 20.04 / 22.04 的传统 `/etc/apt/sources.list`。先用 `cat /etc/os-release`、`dpkg --print-architecture` 和 `ls /etc/apt/sources.list.d` 确认版本、架构和实际源文件。使用 deb822 格式（`ubuntu.sources`）时，段间空行有意义，应保留；请按所在发行版的镜像说明修改 `URIs:`，并在报告中解释差异。
@@ -23,7 +25,7 @@ output: zs123
    cat "$src.before-lab"
    ```
 
-2. 将下面的脚本正文保存为 `clean-sources.sh`，执行 `bash clean-sources.sh`。它从原文件读入，在临时文件中去除整行注释和空行，确认至少存在一条二进制软件源后才写回。在报告中以文本贴出脚本，并截取执行后的列表。
+2. 在家目录执行 `nano clean-sources.sh`，粘贴下方正文，首行应是 `#!/usr/bin/env bash`。按 `Ctrl+O`、回车保存，再按 `Ctrl+X` 退出。先运行 `bash -n clean-sources.sh` 检查语法，正常时没有输出，然后执行 `bash clean-sources.sh`。它从原文件读入，在临时文件中去除整行注释和空行，确认至少存在一条二进制软件源后才写回。在报告中以文本贴出脚本，并截取执行后的列表。
 
    ```bash
    #!/usr/bin/env bash
@@ -46,6 +48,8 @@ output: zs123
 
 4. 执行 `sudo apt update` 更新索引，再执行 `sudo apt upgrade` 更新软件包；先阅读变更摘要，再确认。截图应能看到镜像访问结果以及升级结果。若已是最新版本，保留“0 upgraded”等真实输出。
 
+**换源前后怎样取图。** 替换前先执行 `grep '^deb ' /etc/apt/sources.list` 并截全屏，替换后在同一终端重复该命令再截一张。图注写出实际变化的仓库域名、仍使用的版本代号。若清屏后看不到备份动作，可单独显示备份文件路径；若 `apt update` 报错，先读第一条错误，核对域名、网络和源中的发行版代号，再重新更新。
+
 ## 2. 启用中文命令帮助
 
 ```bash
@@ -60,7 +64,7 @@ LC_ALL=zh_CN.UTF-8 LANGUAGE=zh_CN:zh man
 ## 3. 安装并配置 SSH 服务
 
 1. 在虚拟机控制台执行 `sudo apt install openssh-server`，保留安装截图。执行 `sudo systemctl enable --now ssh` 检查服务能启动。下面以 Ubuntu 22.04 的 `ssh.service` 为例。
-2. 执行 `sudoedit /etc/ssh/sshd_config`。将下列示例放在全局区域、首个 `Match` 之前，替换已有冲突项。**端口是字符串拼接**：固定前缀 `22` 后接学号后三位，`123` 对应 `22123`。保留虚拟机控制台以便排错。
+2. 在虚拟机控制台先执行 `sudo cp -n /etc/ssh/sshd_config /etc/ssh/sshd_config.before-lab` 备份初始配置，再执行 `sudoedit /etc/ssh/sshd_config`。习惯用 nano 的同学也可用 `sudo nano /etc/ssh/sshd_config` 打开同一文件。将下列示例放在全局区域、首个 `Match` 之前，替换已有冲突项。**端口是字符串拼接**：固定前缀 `22` 后接学号后三位，`123` 对应 `22123`。保留虚拟机控制台以便排错。
 
    ```text
    Port 22123
@@ -75,6 +79,8 @@ LC_ALL=zh_CN.UTF-8 LANGUAGE=zh_CN:zh man
    sudo ss -lntp | grep sshd
    ip -br -4 addr
    ```
+
+**保存并验证。** `sshd -t` 若报告行号，先返回该行修正。成功后让终端显示 `sshd -T` 的端口和 root 登录策略，再显示 `ss` 中的监听端口。这张全屏图可以核对“配置值”和“实际监听值”是否一致。
 
 ## 4. 创建用户，从宿主机登录
 
@@ -93,6 +99,8 @@ ls -ld /home/zs123
 ```bash
 ssh -p 22123 zs123@192.168.56.101
 ```
+
+**连接画面按操作顺序保留。** 在 Xshell 选“文件 → 新建”，在“连接”页填主机、协议、端口，先截宿主机全屏；在“用户身份验证”页选用新账号。使用 OpenSSH 客户端时，截取含完整 `ssh -p … 用户@地址` 的宿主机画面。连接成功后再截登录结果。执行 `sudo su` 后先运行 `whoami`，在出现 `root` 而尚未 `exit` 时截图，这样同一屏可以核对提权前后的身份。
 
 首次连接时，可在虚拟机运行 `ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub` 核对客户端提示的 ED25519 指纹。成功登录后，在**新账号的远程会话**内逐行执行并截图。
 

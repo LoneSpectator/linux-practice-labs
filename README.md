@@ -10,7 +10,7 @@
 | [四 · Shell 脚本基础](docs/lab4.md) | 用户权限判断、站点备份、Ping 响应统计 |
 | [五 · 使用 Shell 脚本部署 LNMP](docs/lab5.md) | 分阶段部署、日志与复现验证 |
 
-[报告提交与评分](docs/submission.md)
+[在线指导书](https://lonespectator.github.io/linux-practice-labs/) · [全屏截屏方法与图例](docs/screenshots.md) · [报告提交与评分](docs/submission.md)
 
 ## 目录
 

@@ -10,6 +10,8 @@ output: "200"
 
 让 Nginx 接收浏览器请求，交给 PHP-FPM 执行 PHP，由 WordPress 读写 MySQL。phpMyAdmin 用于管理数据库。使用实验二的虚拟机，示例中的 `zs`、`123` 和 IP 均须替换。可登录实验一建立的首字母账号执行本章命令。先记下 `whoami` 和 `id -gn` 的结果。
 
+> **本章截屏**　每张图须覆盖整块实验显示屏，从左上角第一个像素到右下角最后一个像素。终端保留命令和输出，浏览器保留地址栏和页面结果。输入真实口令或生成密钥后，先切换到能验证结果且不显示秘密的画面再截屏。[查看网页取图样式](screenshots.html#browser)
+
 ## 1. 安装并识别三个服务
 
 ```bash
@@ -23,6 +25,8 @@ ls -l /run/php/*-fpm.sock
 ```
 
 截取安装过程和服务状态。先从宿主机访问虚拟机 IP，确认 Nginx 能返回页面。记录实际 PHP 版本及 socket 的完整文件名，下面的 `php8.1-fpm.sock` 是 Ubuntu 22.04 的常见示例。
+
+**先做一次连通测试。** 在虚拟机运行 `hostname -I`，选宿主机可达的 IPv4 地址。先在虚拟机执行 `curl -I http://127.0.0.1/`，检查首行状态；再在宿主机浏览器输入 `http://虚拟机IP/`。保留安装结果图，在图注中标出三个服务的实际名称。如果本机能打开欢迎页而宿主机打不开，先核对访问地址和虚拟网卡，再继续修改站点。
 
 ## 2. 更换站点根目录，接通 PHP
 
@@ -57,6 +61,8 @@ server {
     }
 }
 ```
+
+保存后运行 `readlink -f /etc/nginx/sites-enabled/default`，输出应指向刚编辑的文件。用 `grep -nE '^[[:space:]]*(root|fastcgi_pass)[[:space:]]' /etc/nginx/sites-enabled/default` 将根目录和 socket 同时显示出来，与 `ls -l /run/php/` 中的实际文件对照。**在此截一张终端全屏图**，使路径、命令与返回值清楚可见。语法检查失败时，按 `nginx -t` 给出的文件与行号修改，检查通过后再重载。
 
 执行以下命令后，在宿主机打开 `http://虚拟机IP/info.php`。成功页面显示 PHP 版本，Server API 显示 FPM/FastCGI。留取本页截图后移除测试文件，以免长期暴露环境信息。
 
@@ -107,6 +113,8 @@ printf '%s\n' '<?php phpinfo();' > "$webroot/info.php"
    SHOW DATABASES LIKE 'wp';
    ```
 
+**数据库页面怎样核验。** 在 phpMyAdmin 执行含密码的语句后，打开新的 SQL 查询页，确认其中没有前次口令，再执行 `SHOW DATABASES LIKE 'wp';`。截取宿主机全屏，应同时看到地址栏里的 `pma后三位`、查询结果的 `wp` 和左侧库名。要记录授权，可在虚拟机的 MySQL 管理会话执行 `SHOW GRANTS FOR 'wp'@'localhost';`。短语配置的实际运行证据可用 `php -l "$pma/config.inc.php"` 的语法检查结果配合网页登录画面；真实随机串留在文件内。
+
 ## 4. 安装 WordPress 并发表文章
 
 1. 在 WordPress 官方发布页选与 `php -v` 结果兼容的版本，复制该版 `.tar.gz` 下载地址。使用下列命令下载并解压；这次的目录名是**姓名首字母 + blog**。
@@ -123,6 +131,8 @@ printf '%s\n' '<?php phpinfo();' > "$webroot/info.php"
 
 2. 从宿主机打开 `http://虚拟机IP/zsblog/wp-admin/setup-config.php`。数据库名填 `wp`，用户填 `wp`，密码填上一节创建的博客口令，主机填 `localhost`。再设置博客标题和独立的 WordPress 后台账号，记录配置界面。
 3. 登录后台，选择“文章 → 写文章”，输入自拟标题和正文并发布。在新的浏览器标签页打开文章固定链接，截图应能辨认个人站点路径、文章标题和正文。完成验收后移除刚才的测试页：`rm -f "$webroot/info.php"`。
+
+**发表后怎么确认。** 发布成功后点“查看文章”，核对地址栏仍是本虚拟机的博客路径，正文有自己的标题和内容。截宿主机全屏，图注写实际标题和访问路径。如果页面停留在编辑器或预览，返回文章列表确认状态为“已发布”，再打开前台链接取图。
 
 ## 报告验收
 
