@@ -8,7 +8,7 @@ output: "200"
 ---
 ## 实验任务
 
-让 Nginx 接收浏览器请求，交给 PHP-FPM 执行 PHP，由 WordPress 读写 MySQL。phpMyAdmin 用于管理数据库。使用实验二的 Ubuntu 24.04 LTS 或 26.04 LTS 虚拟机，示例中的 `zs`、`123` 和 IP 均须替换。可登录实验一建立的首字母账号执行本章命令。先记下 `whoami` 和 `id -gn` 的结果。
+让 Nginx 接收浏览器请求，交给 PHP-FPM 执行 PHP，由 WordPress 读写 MySQL。phpMyAdmin 用于管理数据库。使用实验二的 Ubuntu 24.04 LTS 或 26.04 LTS 虚拟机，示例中的 `zs`、`123` 和 IP 均须替换。可登录实验一建立的首字母账号执行本章命令。`whoami` 显示当前用户名，`id -gn` 显示该用户的主组。后面设置网站目录的属主和组时会用到这两个值。
 
 > **本章截屏**　从宿主机截取整个屏幕。终端保留命令和输出，浏览器保留地址栏和页面结果。需要强调库名或文章标题时，在全屏图上加红框。[查看网页取图样式](screenshots.html#browser)
 
@@ -24,7 +24,13 @@ php -v
 ls -l /run/php/*-fpm.sock
 ```
 
-截取安装过程和服务状态。先从宿主机访问虚拟机 IP，确认 Nginx 能返回页面。记录实际 PHP 版本及 socket 的完整文件名，默认软件包下，24.04 对应 `php8.3-fpm.sock`，26.04 对应 `php8.5-fpm.sock`。填写下一节的 `fastcgi_pass` 时，以刚才 `ls` 列出的文件为准。
+| 操作 | 为什么做、看什么 |
+| --- | --- |
+| `apt update`、`apt install` | 先刷新软件包索引，再安装 Web 服务、数据库、PHP 运行环境及扩展。`php-mysql` 让 PHP 应用能连接 MySQL。 |
+| `systemctl enable --now nginx mysql` | 立即启动 Nginx 和 MySQL，并设置开机自动启动。 |
+| `systemctl list-units`、`systemctl is-active` | 前者显示本机 PHP-FPM 的服务名和运行状态，后者检查 Nginx 和 MySQL 是否均为 `active`。在此截取服务状态。 |
+| `php -v` | 显示命令行 PHP 的版本，供后面选择兼容的应用版本参考。 |
+| `ls -l /run/php/*-fpm.sock` | 列出 PHP-FPM 用来接收本机请求的 Unix socket 文件。记下正在运行的 FPM 服务对应的完整路径，下一步填入 Nginx 配置。 |
 
 **先做一次连通测试。** 在虚拟机运行 `hostname -I`，选宿主机可达的 IPv4 地址。先在虚拟机执行 `curl -I http://127.0.0.1/`，检查首行状态；再在宿主机浏览器输入 `http://虚拟机IP/`。保留安装结果图，在图注中标出三个服务的实际名称。如果本机能打开欢迎页而宿主机打不开，先核对访问地址和虚拟网卡，再继续修改站点。
 
@@ -42,7 +48,11 @@ ls -ld "$webroot"
 ls -l /etc/nginx/sites-available/default*
 ```
 
-用 `sudo nano /etc/nginx/sites-available/default` 修改启用的默认站点。以下是本实验独立虚拟机上的完整示例。将 `/zs/www` 和 FastCGI socket 改为实际值。默认站点还应通过 `/etc/nginx/sites-enabled/default` 启用。
+前两行把姓名首字母和网站路径存入变量，后续命令就能使用同一个目录。`cp -n` 备份原配置，再次执行时保留第一次备份。`mkdir -p` 创建站点目录，`chown` 把它交给当前用户及主组，方便稍后写入测试页面。最后两条 `ls` 分别显示目录的属主、属组以及备份文件名。
+
+用 `sudo nano /etc/nginx/sites-available/default` 编辑默认站点。把 `root` 改为自己的站点目录，Nginx 会到这里查找浏览器请求的文件。
+
+**为什么要看 `/run/php/`？** 浏览器访问 `info.php` 时，Nginx 要把请求交给 PHP-FPM 执行。`fastcgi_pass` 指定交接地址，`unix:` 后面填写上一步记下的完整路径。例如，若列出的是 `/run/php/php8.5-fpm.sock`，就把下例中的 `php8.3-fpm.sock` 换成 `php8.5-fpm.sock`。文件名写错时，配置语法仍可能正确，但 Nginx 连不上 PHP-FPM，浏览器访问 PHP 页面时就会看到 `502 Bad Gateway`。
 
 ```nginx
 server {
@@ -62,9 +72,11 @@ server {
 }
 ```
 
-保存后运行 `readlink -f /etc/nginx/sites-enabled/default`，输出应指向刚编辑的文件。用 `grep -nE '^[[:space:]]*(root|fastcgi_pass)[[:space:]]' /etc/nginx/sites-enabled/default` 将根目录和 socket 同时显示出来，与 `ls -l /run/php/` 中的实际文件对照。**在此截一张终端全屏图**，使路径、命令与返回值清楚可见。语法检查失败时，按 `nginx -t` 给出的文件与行号修改，检查通过后再重载。
+配置中的 `listen` 让 Nginx 在 80 端口接收 HTTP 请求，`default_server` 使这个站点处理未匹配到其他站点的请求。`index` 指定访问目录时依次查找的首页；`location /` 中的 `try_files` 先查文件和目录，找不到时返回 404。以 `.php` 结尾的请求进入第二个 `location`，由 `include` 引入处理 PHP 脚本所需的参数，再通过 `fastcgi_pass` 交给 PHP-FPM。
 
-执行以下命令后，在宿主机打开 `http://虚拟机IP/info.php`。成功页面显示 PHP 版本，Server API 显示 FPM/FastCGI。留取本页截图后移除测试文件，以免长期暴露环境信息。
+在 `nano` 中截取全屏图，用红框标出 `root` 和 `fastcgi_pass` 两行。保存退出后，运行下方第一条命令检查配置并重载 Nginx。如果 `nginx -t` 报错，按提示的文件和行号修正，再执行一次。
+
+第一行中的 `&&` 表示语法检查通过才重载，让新配置生效。第二行把调用 `phpinfo()` 的测试脚本写入新站点目录。执行后，在宿主机打开 `http://虚拟机IP/info.php`。成功页面显示 PHP 版本，Server API 显示 FPM/FastCGI。截取这个页面，实验结束时删除测试文件。
 
 ```bash
 sudo nginx -t && sudo systemctl reload nginx
@@ -87,7 +99,9 @@ printf '%s\n' '<?php phpinfo();' > "$webroot/info.php"
    ls -ld "$pma"
    ```
 
-2. 在虚拟机运行 `sudo mysql`。建立供 phpMyAdmin 登录的本机管理账号 `lab_pma`。下面两条授权分别用于创建本地数据库账号和向 `wp` 库授予权限。本节用 `123456` 举例，登录时输入建账号时设置的密码。
+   `suffix`、`pma`、`release` 分别保存学号后缀、安装目录和版本号。`curl -fL` 跟随下载链接，遇到 HTTP 错误即报错。`install -d` 创建目标目录并设置属主；`tar` 解压时去掉压缩包最外层目录，让访问路径直接对应 phpMyAdmin。`cp -n` 从样例生成配置并保留已有配置，`chown -R` 设置解压文件的属主，`ls -ld` 显示最终目录及属主。
+
+2. 在虚拟机运行 `sudo mysql` 进入数据库管理控制台。建立供 phpMyAdmin 登录的本机管理账号 `lab_pma`。下面两条授权分别用于创建本地数据库账号和向 `wp` 库授予权限。本节用 `123456` 举例，登录时输入建账号时设置的密码。
 
    ```sql
    CREATE USER 'lab_pma'@'localhost' IDENTIFIED BY '123456';
@@ -97,8 +111,10 @@ printf '%s\n' '<?php phpinfo();' > "$webroot/info.php"
    EXIT;
    ```
 
+   `CREATE USER` 建立登录账号。第一条 `GRANT` 允许它创建后面要用的博客账号，第二条允许它管理 `wp` 库并把这个库的权限授予博客账号。`SHOW GRANTS` 显示授权结果，`EXIT` 返回终端。
+
 3. **记录模板指定的短语配置。** 原模板点名 `libraries/config.default.php` 和站点根目录的 `config.inc.php`，要求指出 `$cfg['blowfish_secret']` 并以姓名全拼演示，例如 `zhangsan`。先查找实际文件；将两份存在的文件复制到家目录的练习文件夹，在副本中按模板修改，截图标注“模板演示副本”、路径和版本。某版本若无默认文件，就记录实测目录。报告再单独给出实际运行配置的证据。
-4. **配置实际站点。** phpMyAdmin 官方将用户配置放在 `config.inc.php`，默认文件由软件包维护；cookie 认证使用 32 字节随机密钥。下面的命令在虚拟机内生成一份 PHP 赋值语句，用 `sudo nano "$pma/config.inc.php"` 打开配置文件，将输出粘贴到原有短语设置的位置。保留示例中的 `auth_type = 'cookie'` 和 `host = 'localhost'`。**姓名全拼与有效密钥的区别要在报告里解释清楚。**
+4. **配置实际站点。** phpMyAdmin 官方将用户配置放在 `config.inc.php`，默认文件由软件包维护；cookie 认证使用 32 字节随机密钥。下面的命令用 `random_bytes(32)` 生成密钥，再转成可复制的十六进制文本；生成的 PHP 赋值语句会把文本还原为 cookie 认证所需的密钥。用 `sudo nano "$pma/config.inc.php"` 打开配置文件，将输出粘贴到原有短语设置的位置。保留示例中的 `auth_type = 'cookie'` 和 `host = 'localhost'`。**姓名全拼与有效密钥的区别要在报告里解释清楚。**
 
    ```bash
    php -r 'printf("\$cfg[\x27blowfish_secret\x27] = sodium_hex2bin(\x27%s\x27);\n", bin2hex(random_bytes(32)));'
@@ -113,7 +129,9 @@ printf '%s\n' '<?php phpinfo();' > "$webroot/info.php"
    SHOW DATABASES LIKE 'wp';
    ```
 
-**数据库页面怎样核验。** 在 phpMyAdmin 的 SQL 页执行 `SHOW DATABASES LIKE 'wp';`。截取宿主机全屏，应同时看到地址栏里的 `pma后三位`、查询结果的 `wp` 和左侧库名。要记录授权，可在虚拟机的 MySQL 管理会话执行 `SHOW GRANTS FOR 'wp'@'localhost';`。短语配置的实际运行证据可用 `php -l "$pma/config.inc.php"` 的语法检查结果配合网页登录画面。
+`CREATE DATABASE` 建立保存文章和设置的库，`utf8mb4` 用于保存中文等 Unicode 字符。`CREATE USER` 建立 WordPress 连接数据库使用的账号，`GRANT` 将它的权限限定在 `wp` 库。最后的 `SHOW DATABASES` 查询会列出刚创建的库。
+
+**数据库页面怎样核验。** 保留最后一条查询的结果。截取宿主机全屏，应同时看到地址栏里的 `pma后三位`、查询结果的 `wp` 和左侧库名。要记录授权，可在虚拟机的 MySQL 管理会话执行 `SHOW GRANTS FOR 'wp'@'localhost';`。短语配置的实际运行证据可用 `php -l "$pma/config.inc.php"` 的语法检查结果配合网页登录画面。
 
 ## 4. 安装 WordPress 并发表文章
 
@@ -128,6 +146,8 @@ printf '%s\n' '<?php phpinfo();' > "$webroot/info.php"
    sudo chown -R www-data:www-data "$blog"
    ls -ld "$blog"
    ```
+
+   `read` 接收粘贴的下载地址，`curl` 将发布包保存到虚拟机。`blog` 记录博客目录，`install -d` 创建它，`tar` 把程序直接解压到这个目录。`chown` 让 WordPress 运行时使用的 `www-data` 账号能写入配置和上传文件，`ls -ld` 显示目录名称和属主。
 
 2. 从宿主机打开 `http://虚拟机IP/zsblog/wp-admin/setup-config.php`。数据库名填 `wp`，用户填 `wp`，密码填上一节创建的博客口令，主机填 `localhost`。再设置博客标题和独立的 WordPress 后台账号，记录配置界面。
 3. 登录后台，选择“文章 → 写文章”，输入自拟标题和正文并发布。在新的浏览器标签页打开文章固定链接，截图应能辨认个人站点路径、文章标题和正文。完成验收后移除刚才的测试页：`rm -f "$webroot/info.php"`。
