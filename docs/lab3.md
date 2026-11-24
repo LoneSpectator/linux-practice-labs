@@ -10,7 +10,7 @@ output: "200"
 
 让 Nginx 接收浏览器请求，交给 PHP-FPM 执行 PHP，由 WordPress 读写 MySQL。phpMyAdmin 用于管理数据库。使用实验二的虚拟机，示例中的 `zs`、`123` 和 IP 均须替换。可登录实验一建立的首字母账号执行本章命令。先记下 `whoami` 和 `id -gn` 的结果。
 
-> **本章截屏**　每张图须覆盖整块实验显示屏，从左上角第一个像素到右下角最后一个像素。终端保留命令和输出，浏览器保留地址栏和页面结果。输入真实口令或生成密钥后，先切换到能验证结果且不显示秘密的画面再截屏。[查看网页取图样式](screenshots.html#browser)
+> **本章截屏**　从宿主机截取整个屏幕。终端保留命令和输出，浏览器保留地址栏和页面结果。需要强调库名或文章标题时，在全屏图上加红框。[查看网页取图样式](screenshots.html#browser)
 
 ## 1. 安装并识别三个服务
 
@@ -87,10 +87,10 @@ printf '%s\n' '<?php phpinfo();' > "$webroot/info.php"
    ls -ld "$pma"
    ```
 
-2. 在虚拟机运行 `sudo mysql`。建立供 phpMyAdmin 登录的本机管理账号 `lab_pma`。下面两条授权分别用于创建本地数据库账号和向 `wp` 库授予权限。将演示占位符换为本实验独立口令，报告不要显示实际口令。
+2. 在虚拟机运行 `sudo mysql`。建立供 phpMyAdmin 登录的本机管理账号 `lab_pma`。下面两条授权分别用于创建本地数据库账号和向 `wp` 库授予权限。本节用 `123456` 举例，登录时输入建账号时设置的密码。
 
    ```sql
-   CREATE USER 'lab_pma'@'localhost' IDENTIFIED BY '替换为独立管理口令';
+   CREATE USER 'lab_pma'@'localhost' IDENTIFIED BY '123456';
    GRANT CREATE USER ON *.* TO 'lab_pma'@'localhost';
    GRANT ALL PRIVILEGES ON wp.* TO 'lab_pma'@'localhost' WITH GRANT OPTION;
    SHOW GRANTS FOR 'lab_pma'@'localhost';
@@ -98,22 +98,22 @@ printf '%s\n' '<?php phpinfo();' > "$webroot/info.php"
    ```
 
 3. **记录模板指定的短语配置。** 原模板点名 `libraries/config.default.php` 和站点根目录的 `config.inc.php`，要求指出 `$cfg['blowfish_secret']` 并以姓名全拼演示，例如 `zhangsan`。先查找实际文件；将两份存在的文件复制到家目录的练习文件夹，在副本中按模板修改，截图标注“模板演示副本”、路径和版本。某版本若无默认文件，就记录实测目录。报告再单独给出实际运行配置的证据。
-4. **配置实际站点。** phpMyAdmin 官方将用户配置放在 `config.inc.php`，默认文件由软件包维护；cookie 认证使用 32 字节随机密钥。下面的命令在虚拟机内生成一份 PHP 赋值语句，输出粘贴到实际 `config.inc.php` 替换原有短语设置。保留示例中的 `auth_type = 'cookie'` 和 `host = 'localhost'`。屏幕截图请遮蔽随机值。**姓名全拼与有效密钥的区别要在报告里解释清楚。**
+4. **配置实际站点。** phpMyAdmin 官方将用户配置放在 `config.inc.php`，默认文件由软件包维护；cookie 认证使用 32 字节随机密钥。下面的命令在虚拟机内生成一份 PHP 赋值语句，输出粘贴到实际 `config.inc.php` 替换原有短语设置。保留示例中的 `auth_type = 'cookie'` 和 `host = 'localhost'`。**姓名全拼与有效密钥的区别要在报告里解释清楚。**
 
    ```bash
    php -r 'printf("\$cfg[\x27blowfish_secret\x27] = sodium_hex2bin(\x27%s\x27);\n", bin2hex(random_bytes(32)));'
    ```
 
-5. 在宿主机打开 `http://虚拟机IP/pma123/`，用 `lab_pma` 登录。进入 **SQL** 页，逐条执行下列语句。网页上的管理账号可能看不到全局“用户账户”标签，使用 SQL 页仍可完成所授范围内的操作。将实际口令留给下一步 WordPress 使用。截取建库结果时，可从左栏选择 `wp`，或执行最后一条查询以避开含口令的语句。
+5. 在宿主机打开 `http://虚拟机IP/pma123/`，用 `lab_pma` 登录。进入 **SQL** 页，逐条执行下列语句。网页上的管理账号可能看不到全局“用户账户”标签，使用 SQL 页仍可完成所授范围内的操作。记下 `wp` 用户的密码，下一步配置 WordPress 时会用到。
 
    ```sql
    CREATE DATABASE wp CHARACTER SET utf8mb4;
-   CREATE USER 'wp'@'localhost' IDENTIFIED BY '替换为独立博客口令';
+   CREATE USER 'wp'@'localhost' IDENTIFIED BY '123456';
    GRANT ALL PRIVILEGES ON wp.* TO 'wp'@'localhost';
    SHOW DATABASES LIKE 'wp';
    ```
 
-**数据库页面怎样核验。** 在 phpMyAdmin 执行含密码的语句后，打开新的 SQL 查询页，确认其中没有前次口令，再执行 `SHOW DATABASES LIKE 'wp';`。截取宿主机全屏，应同时看到地址栏里的 `pma后三位`、查询结果的 `wp` 和左侧库名。要记录授权，可在虚拟机的 MySQL 管理会话执行 `SHOW GRANTS FOR 'wp'@'localhost';`。短语配置的实际运行证据可用 `php -l "$pma/config.inc.php"` 的语法检查结果配合网页登录画面；真实随机串留在文件内。
+**数据库页面怎样核验。** 在 phpMyAdmin 的 SQL 页执行 `SHOW DATABASES LIKE 'wp';`。截取宿主机全屏，应同时看到地址栏里的 `pma后三位`、查询结果的 `wp` 和左侧库名。要记录授权，可在虚拟机的 MySQL 管理会话执行 `SHOW GRANTS FOR 'wp'@'localhost';`。短语配置的实际运行证据可用 `php -l "$pma/config.inc.php"` 的语法检查结果配合网页登录画面。
 
 ## 4. 安装 WordPress 并发表文章
 

@@ -10,56 +10,126 @@ output: zs123
 
 进入实验一安装的虚拟机。示例以首字母 `zs`、学号后三位 `123` 为例。先把本人的三位后缀写在草稿中。若后三位是 `007`，对应账号为 `zs007`，SSH 端口为 `22007`。
 
-> **本章截屏**　无论是在虚拟机控制台还是宿主机的 SSH 客户端操作，都截取整块实验显示屏，从左上角第一个像素到右下角最后一个像素。保留终端提示符、命令与实际输出。[查看终端取图样式](screenshots.html#terminal)
+> **本章截屏**　请在宿主机截取整个屏幕。用红框标出镜像地址、中文提示或 SSH 登录结果，保留窗口周围的桌面和任务栏。[查看终端取图样式](screenshots.html#terminal)
 
-## 1. 备份、清理并更换软件源
+<h2 id="apt">1. 更换 Ubuntu 软件源</h2>
 
-本节示例针对 Ubuntu 20.04 / 22.04 的传统 `/etc/apt/sources.list`。先用 `cat /etc/os-release`、`dpkg --print-architecture` 和 `ls /etc/apt/sources.list.d` 确认版本、架构和实际源文件。使用 deb822 格式（`ubuntu.sources`）时，段间空行有意义，应保留；请按所在发行版的镜像说明修改 `URIs:`，并在报告中解释差异。
+### 换源前：用 cat 查看并备份
 
-1. 备份默认文件并截图。`-n` 保留第一次备份；请在修改前核对备份有内容。
+先运行 `cat /etc/os-release`，记下 `VERSION_CODENAME` 后的版本代号。下面两组命令只执行与你的系统对应的一组。第一行显示原配置，第二行把它备份到家目录。保留“换源前”的全屏图。
 
-   ```bash
-   src=/etc/apt/sources.list
-   sudo cp -n "$src" "$src.before-lab"
-   ls -l "$src" "$src.before-lab"
-   cat "$src.before-lab"
-   ```
+**传统格式**（常见于 Ubuntu 22.04 及更早版本），每条源以 `deb` 开头。
 
-2. 在家目录执行 `nano clean-sources.sh`，粘贴下方正文，首行应是 `#!/usr/bin/env bash`。按 `Ctrl+O`、回车保存，再按 `Ctrl+X` 退出。先运行 `bash -n clean-sources.sh` 检查语法，正常时没有输出，然后执行 `bash clean-sources.sh`。它从原文件读入，在临时文件中去除整行注释和空行，确认至少存在一条二进制软件源后才写回。在报告中以文本贴出脚本，并截取执行后的列表。
+```bash
+cat /etc/apt/sources.list
+cp -nv /etc/apt/sources.list ~/sources.list.bak
+```
 
-   ```bash
-   #!/usr/bin/env bash
-   set -eu
-   src=/etc/apt/sources.list
-   tmp=$(mktemp)
-   trap 'rm -f "$tmp"' EXIT
-   sed -E '/^[[:space:]]*(#|$)/d' "$src" > "$tmp"
-   grep -Eq '^deb[[:space:]]' "$tmp"
-   sudo install -m 644 "$tmp" "$src"
-   cat "$src"
-   ```
+**deb822 格式**（Ubuntu 24.04 起默认使用），文件中有 `Types:` 和 `URIs:`。旧版文件 `sources.list` 若只提示“配置已移至 ubuntu.sources”，请用下面的文件备份。
 
-3. 先截取清理后的旧源。在 x86 Ubuntu 上，可将官方主仓库替换为清华镜像，保留发行版代号、组件和官方安全更新源。以下命令适用于 `archive.ubuntu.com` 及其国家镜像；如原地址不同，请按原文件选择对应镜像。替换后再次截图，前后应能比较域名和发行版代号。
+```bash
+cat /etc/apt/sources.list.d/ubuntu.sources
+cp -nv /etc/apt/sources.list.d/ubuntu.sources ~/ubuntu.sources.bak
+```
 
-   ```bash
-   sudo sed -Ei 's@https?://([a-z][a-z]\.)?archive\.ubuntu\.com/ubuntu@https://mirrors.tuna.tsinghua.edu.cn/ubuntu@g' /etc/apt/sources.list
-   cat /etc/apt/sources.list
-   ```
+### 选择一种方法换源
 
-4. 执行 `sudo apt update` 更新索引，再执行 `sudo apt upgrade` 更新软件包；先阅读变更摘要，再确认。截图应能看到镜像访问结果以及升级结果。若已是最新版本，保留“0 upgraded”等真实输出。
+**Ubuntu Desktop 图形界面**
 
-**换源前后怎样取图。** 替换前先执行 `grep '^deb ' /etc/apt/sources.list` 并截全屏，替换后在同一终端重复该命令再截一张。图注写出实际变化的仓库域名、仍使用的版本代号。若清屏后看不到备份动作，可单独显示备份文件路径；若 `apt update` 报错，先读第一条错误，核对域名、网络和源中的发行版代号，再重新更新。
+1. 按 `Super` 键（通常是 Windows 徽标键），搜索并打开 **Software & Updates（软件和更新）**。进入 **Ubuntu Software（Ubuntu 软件）** 标签页。
+2. 点 **Download from（下载自）→ Other…（其他站点）**，展开 **China（中国）**，选中 `mirrors.tuna.tsinghua.edu.cn`，点 **Choose Server（选择服务器）**。
+3. 点 **Close（关闭）**，出现提示时点 **Reload（重新载入）**。等刷新完成后回到刚才的终端。若列表里找不到清华站点，可使用下方的终端方法。
 
-## 2. 启用中文命令帮助
+**终端方法（Server 或 Desktop）**
+
+1. 打开清华帮助页，选择本机的 Ubuntu 版本和文件格式，复制页面生成的完整配置。ARM 版虚拟机（如 Apple 芯片 Mac 上的 ARM 版 Ubuntu）使用 Ubuntu Ports 页面。[清华 Ubuntu 镜像帮助](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/) · [清华 Ubuntu Ports 帮助](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu-ports/)
+2. 打开刚才查看的文件。传统格式用 `sudo nano /etc/apt/sources.list`，deb822 格式用 `sudo nano /etc/apt/sources.list.d/ubuntu.sources`。在文件开头按 `Ctrl+K` 逐行清除原内容，粘贴新的配置。按 `Ctrl+O`、回车保存，再按 `Ctrl+X` 退出。
+
+### 换源后：用 cat 查看并验证
+
+再次执行换源前的那条命令（`cat /etc/apt/sources.list` 或 `cat /etc/apt/sources.list.d/ubuntu.sources`），截取“换源后”的全屏图。在前后两张图上分别用红框标出原地址和清华地址，核对版本代号相同。然后运行 `sudo apt update`，看到清华镜像的索引成功读取后，再运行 `sudo apt upgrade` 更新软件包。若提示已是最新版本，报告中保留实际输出即可。
+
+### 两种格式的清华源示例（x86 虚拟机）
+
+**传统格式 · Ubuntu 22.04（`jammy`）**　每行表示一个软件源。
+
+```text
+deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy main restricted universe multiverse
+deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-updates main restricted universe multiverse
+deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ jammy-backports main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu/ jammy-security main restricted universe multiverse
+```
+
+**deb822 格式 · Ubuntu 24.04（`noble`）**　地址写在 `URIs:` 后面。两段之间留一个空行，第二段沿用 Ubuntu 官方安全更新地址。
+
+```text
+Types: deb
+URIs: https://mirrors.tuna.tsinghua.edu.cn/ubuntu/
+Suites: noble noble-updates noble-backports
+Components: main restricted universe multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+
+Types: deb
+URIs: http://security.ubuntu.com/ubuntu/
+Suites: noble-security
+Components: main restricted universe multiverse
+Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+```
+
+### 报告中的 Shell 练习：清理原配置
+
+用刚才备份的原配置完成这项练习。执行 `nano ~/clean-sources.sh`，按本机格式**只写对应的一行**。
+
+传统格式删除注释行和空行。
+
+```bash
+sed '/^[[:space:]]*#/d; /^[[:space:]]*$/d' ~/sources.list.bak
+```
+
+deb822 删除注释行，合并多余空行，保留软件源之间的分段。
+
+```bash
+sed '/^[[:space:]]*#/d; s/^[[:space:]]*$//' ~/ubuntu.sources.bak | cat -s
+```
+
+保存后运行下面两行。将脚本正文写进报告，截取清理结果。
+
+```bash
+bash ~/clean-sources.sh > ~/sources-cleaned.txt
+cat ~/sources-cleaned.txt
+```
+
+
+<h2 id="chinese">2. 切换中文并验证命令帮助</h2>
+
+在实验一用英语安装的系统中，选择下面一种方法启用简体中文。完成后都用终端里的 `man` 验证。
+
+### Ubuntu Desktop 图形界面
+
+1. 按 `Super` 键，搜索 **Region & Language（区域与语言）**。也可以从 **Settings（设置）→ System（系统）→ Region & Language** 进入。较早版本的“区域与语言”直接列在设置侧栏。
+2. 打开 **Manage Installed Languages（管理已安装的语言）→ Install / Remove Languages（安装或删除语言）**，勾选 **Chinese (simplified)（简体中文）**，点 **Apply Changes（应用更改）**，等语言包安装完成。也可以在应用菜单中搜索 **Language Support（语言支持）** 进入这个窗口。
+3. 回到“区域与语言”，在当前用户的 **Language（语言）** 中选 **中文（中国）** 并确认。如果本机显示的是“语言支持”窗口，把“汉语（中国）”拖到界面语言列表的第一位。注销并重新登录，打开“设置”查看中文菜单。
+4. 打开终端，执行下方的 `man`，截取中文提示。如果桌面已变成中文而 `man` 仍显示英文，按下面的命令安装中文手册和语言包后再验证。[Ubuntu 安装语言帮助](https://help.ubuntu.com/stable/ubuntu-help/prefs-language-install.html) · [Ubuntu 切换显示语言帮助](https://help.ubuntu.com/stable/ubuntu-help/session-language.html.en)
+
+### 终端方法（Server 或 Desktop）
+
+安装中文支持并生成简体中文环境。最后一行让本次终端会话使用中文，立即生效。
 
 ```bash
 sudo apt install language-pack-zh-hans locales man-db manpages-zh
 sudo locale-gen zh_CN.UTF-8
-locale -a | grep -i zh_cn
-LC_ALL=zh_CN.UTF-8 LANGUAGE=zh_CN:zh man
+export LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:zh LC_MESSAGES=zh_CN.UTF-8
 ```
 
-最后一条故意不指定手册页，观察并截取中文提示。也可用 `LC_ALL=zh_CN.UTF-8 LANGUAGE=zh_CN:zh man ls` 查看中文手册，按 `q` 退出。安装英文系统不妨碍单独为一个命令选择中文环境。
+希望重新登录后仍使用中文时，再执行 `sudo update-locale LANG=zh_CN.UTF-8 LANGUAGE=zh_CN:zh`，然后注销并重新登录。
+
+### 两种方法都这样验收
+
+```bash
+man
+```
+
+这里有意只输入 `man`，让终端显示“您需要什么手册页？”或本机版本的同类中文提示。在宿主机截全屏，用红框标出命令及中文回答。如果 Server 的纯文本控制台显示方框，完成本章的 SSH 登录后在宿主机终端查看中文。想读一页手册时，可以再输入 `man ls`，按 `q` 退出。
 
 ## 3. 安装并配置 SSH 服务
 
@@ -118,8 +188,8 @@ exit
 
 | 环节 | 最少保留内容 |
 | --- | --- |
-| 软件源 | 备份和脚本清理的**命令文本及截图**、换源前后列表截图、更新软件截图 |
-| 中文与 SSH | 终端中文帮助、SSH 服务端安装、禁止 root 远程登录和个人端口的配置截图 |
+| 软件源 | 备份和脚本清理的命令文本及截图、两次 `cat` 的全屏图、软件更新结果 |
+| 中文与 SSH | 桌面或终端启用中文后 `man` 的中文提示、SSH 服务端安装、禁止 root 远程登录和个人端口的配置截图 |
 | 新账号 | 创建家目录、追加 sudo 组的命令文本及截图；新用户执行 `sudo su` 成功进入 root 的截图 |
 | 远程访问 | SSH 客户端配置和连接成功两类画面，能辨认地址、端口和用户名 |
 
