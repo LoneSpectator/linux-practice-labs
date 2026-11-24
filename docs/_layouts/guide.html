@@ -20,10 +20,13 @@
         <h1>{{ page.title }}</h1>
         <p class="intro">{{ page.intro }}</p>
     </div>
+    {% if page.command %}
     <div class="terminal" aria-label="终端输出示例">
         <div class="terminal-bar"><span class="lights" aria-hidden="true">● ● ●</span><span>ubuntu · bash</span></div>
         <div class="term-text"><div><span class="shell-prompt">ubuntu</span>:~$ {{ page.command }}</div><div class="term-output">{{ page.output }}</div><div class="caret" aria-hidden="true">▍</div></div>
-    </div></div>
+    </div>
+    {% endif %}
+    </div>
     <div class="layout">
         <aside class="rail"><div class="rail-inner"><p class="rail-label">课程导航</p>
             <nav aria-label="课程章节"><a data-key="home" href="index.html">课程首页</a>
