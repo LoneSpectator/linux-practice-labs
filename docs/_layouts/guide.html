@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="theme-color" content="#172b42">
+    <title>{{ page.title }} · 实验指导书</title>
+    <link rel="stylesheet" href="assets/course.css">
+    <script defer src="assets/course.js"></script>
+</head>
+<body data-page="{{ page.key }}">
+<a class="skip" href="#main">跳到正文</a>
+<header class="top"><div class="bar">
+    <a class="brand" href="index.html"><span class="prompt" aria-hidden="true">›_</span><span>Linux 操作系统实践</span></a>
+    <nav aria-label="主导航"><a href="index.html" data-nav="home">实验目录</a><a href="submission.html" data-nav="submission">报告提交</a></nav>
+</div></header>
+<main id="main" class="wrap">
+    <div class="mast"><div class="mast-text">
+        <p class="kicker">{{ page.kicker }}</p>
+        <h1>{{ page.title }}</h1>
+        <p class="intro">{{ page.intro }}</p>
+    </div>
+    <div class="terminal" aria-label="终端输出示例">
+        <div class="terminal-bar"><span class="lights" aria-hidden="true">● ● ●</span><span>ubuntu · bash</span></div>
+        <div class="term-text"><div><span class="shell-prompt">ubuntu</span>:~$ {{ page.command }}</div><div class="term-output">{{ page.output }}</div><div class="caret" aria-hidden="true">▍</div></div>
+    </div></div>
+    <div class="layout">
+        <aside class="rail"><div class="rail-inner"><p class="rail-label">课程导航</p>
+            <nav aria-label="课程章节"><a data-key="home" href="index.html">课程首页</a>
+            <a data-key="lab1" href="lab1.html"><b>01</b>安装 Linux</a>
+            <a data-key="lab2" href="lab2.html"><b>02</b>Linux 基本操作</a>
+            <a data-key="lab3" href="lab3.html"><b>03</b>部署博客网站</a>
+            <a data-key="lab4" href="lab4.html"><b>04</b>Shell 脚本基础</a>
+            <a data-key="lab5" href="lab5.html"><b>05</b>自动部署 LNMP</a>
+            <a data-key="submission" href="submission.html">报告与评分</a></nav>
+            <div class="toc" hidden><p class="rail-label">本页目录</p><nav aria-label="本页目录"></nav></div>
+        </div></aside>
+        <article class="reading">{{ content }}</article>
+    </div>
+</main>
+<footer><div class="bar"><span>计算机学院 · Linux 操作系统实践</span><a href="#main">回到顶部 ↑</a></div></footer>
+</body></html>

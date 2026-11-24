@@ -1,0 +1,12 @@
+title: Linux 操作系统实践
+lang: zh-CN
+markdown: kramdown
+kramdown:
+    input: GFM
+    syntax_highlighter_opts:
+        disable: true
+defaults:
+    - scope:
+          path: ""
+      values:
+          layout: guide
