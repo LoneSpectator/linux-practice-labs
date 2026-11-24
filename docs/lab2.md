@@ -186,4 +186,14 @@ exit
 
 [清华 Ubuntu 镜像说明](https://mirrors.tuna.tsinghua.edu.cn/help/ubuntu/) · [Ubuntu OpenSSH 文档](https://ubuntu.com/server/docs/how-to/security/openssh-server/)
 
+<h2 id="snapshot">5. 保存实验二完成时的虚拟机快照</h2>
+
+从宿主机用新账号、新端口成功登录，并确认 `sudo su` 能切换到 root 后，就可以保存快照。这样，后续实验如果配置出错，可以直接回到软件源、中文环境和 SSH 都已配好的状态。
+
+1. **正常关机。** 保存正在编辑的文件，在 Ubuntu 虚拟机中执行 `sudo poweroff`。等虚拟机软件显示“已关机”后再拍快照。
+2. **拍摄快照。** 在宿主机的 VMware Workstation 中选中这台虚拟机，点 **虚拟机 → 快照 → 拍摄快照**，名称填 `实验二完成`，点“拍摄快照”。使用 VirtualBox 的同学在管理器中选中虚拟机，打开 **快照**，点 **生成（Take）**，填写同一名称。
+3. **继续实验。** 在快照列表中看到 `实验二完成` 后，正常启动虚拟机，继续实验三。
+
+**以后需要恢复时**，先把快照之后仍要保留的脚本、报告或截图复制到宿主机，再将虚拟机关机。恢复后，虚拟磁盘会回到拍摄快照时的状态。打开 VMware 的 **虚拟机 → 快照 → 快照管理器**，选中 `实验二完成`，点 **转到（Go To）** 并确认；VirtualBox 在快照列表中选中同名快照，点 **恢复（Restore）**。随后启动虚拟机即可。
+
 [下一项实验 · 在 Linux 中部署博客网站](lab3.html)
