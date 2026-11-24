@@ -8,7 +8,7 @@ output: "200"
 ---
 ## 实验任务
 
-让 Nginx 接收浏览器请求，交给 PHP-FPM 执行 PHP，由 WordPress 读写 MySQL。phpMyAdmin 用于管理数据库。使用实验二的虚拟机，示例中的 `zs`、`123` 和 IP 均须替换。可登录实验一建立的首字母账号执行本章命令。先记下 `whoami` 和 `id -gn` 的结果。
+让 Nginx 接收浏览器请求，交给 PHP-FPM 执行 PHP，由 WordPress 读写 MySQL。phpMyAdmin 用于管理数据库。使用实验二的 Ubuntu 24.04 LTS 或 26.04 LTS 虚拟机，示例中的 `zs`、`123` 和 IP 均须替换。可登录实验一建立的首字母账号执行本章命令。先记下 `whoami` 和 `id -gn` 的结果。
 
 > **本章截屏**　从宿主机截取整个屏幕。终端保留命令和输出，浏览器保留地址栏和页面结果。需要强调库名或文章标题时，在全屏图上加红框。[查看网页取图样式](screenshots.html#browser)
 
@@ -24,7 +24,7 @@ php -v
 ls -l /run/php/*-fpm.sock
 ```
 
-截取安装过程和服务状态。先从宿主机访问虚拟机 IP，确认 Nginx 能返回页面。记录实际 PHP 版本及 socket 的完整文件名，下面的 `php8.1-fpm.sock` 是 Ubuntu 22.04 的常见示例。
+截取安装过程和服务状态。先从宿主机访问虚拟机 IP，确认 Nginx 能返回页面。记录实际 PHP 版本及 socket 的完整文件名，默认软件包下，24.04 对应 `php8.3-fpm.sock`，26.04 对应 `php8.5-fpm.sock`。填写下一节的 `fastcgi_pass` 时，以刚才 `ls` 列出的文件为准。
 
 **先做一次连通测试。** 在虚拟机运行 `hostname -I`，选宿主机可达的 IPv4 地址。先在虚拟机执行 `curl -I http://127.0.0.1/`，检查首行状态；再在宿主机浏览器输入 `http://虚拟机IP/`。保留安装结果图，在图注中标出三个服务的实际名称。如果本机能打开欢迎页而宿主机打不开，先核对访问地址和虚拟网卡，再继续修改站点。
 
@@ -42,7 +42,7 @@ ls -ld "$webroot"
 ls -l /etc/nginx/sites-available/default*
 ```
 
-用 `sudoedit /etc/nginx/sites-available/default` 修改启用的默认站点。以下是本实验独立虚拟机上的完整示例。将 `/zs/www` 和 FastCGI socket 改为实际值。默认站点还应通过 `/etc/nginx/sites-enabled/default` 启用。
+用 `sudo nano /etc/nginx/sites-available/default` 修改启用的默认站点。以下是本实验独立虚拟机上的完整示例。将 `/zs/www` 和 FastCGI socket 改为实际值。默认站点还应通过 `/etc/nginx/sites-enabled/default` 启用。
 
 ```nginx
 server {
@@ -57,7 +57,7 @@ server {
     }
     location ~ \.php$ {
         include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.1-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
     }
 }
 ```
@@ -98,7 +98,7 @@ printf '%s\n' '<?php phpinfo();' > "$webroot/info.php"
    ```
 
 3. **记录模板指定的短语配置。** 原模板点名 `libraries/config.default.php` 和站点根目录的 `config.inc.php`，要求指出 `$cfg['blowfish_secret']` 并以姓名全拼演示，例如 `zhangsan`。先查找实际文件；将两份存在的文件复制到家目录的练习文件夹，在副本中按模板修改，截图标注“模板演示副本”、路径和版本。某版本若无默认文件，就记录实测目录。报告再单独给出实际运行配置的证据。
-4. **配置实际站点。** phpMyAdmin 官方将用户配置放在 `config.inc.php`，默认文件由软件包维护；cookie 认证使用 32 字节随机密钥。下面的命令在虚拟机内生成一份 PHP 赋值语句，输出粘贴到实际 `config.inc.php` 替换原有短语设置。保留示例中的 `auth_type = 'cookie'` 和 `host = 'localhost'`。**姓名全拼与有效密钥的区别要在报告里解释清楚。**
+4. **配置实际站点。** phpMyAdmin 官方将用户配置放在 `config.inc.php`，默认文件由软件包维护；cookie 认证使用 32 字节随机密钥。下面的命令在虚拟机内生成一份 PHP 赋值语句，用 `sudo nano "$pma/config.inc.php"` 打开配置文件，将输出粘贴到原有短语设置的位置。保留示例中的 `auth_type = 'cookie'` 和 `host = 'localhost'`。**姓名全拼与有效密钥的区别要在报告里解释清楚。**
 
    ```bash
    php -r 'printf("\$cfg[\x27blowfish_secret\x27] = sodium_hex2bin(\x27%s\x27);\n", bin2hex(random_bytes(32)));'
